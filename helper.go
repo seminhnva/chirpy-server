@@ -6,7 +6,13 @@ import (
 	"net/http"
 )
 
-func respondWithError(w http.ResponseWriter, code int, msg string) {
+func respondWithError(w http.ResponseWriter, code int, msg string, err error) {
+	if err != nil {
+		log.Println(err)
+	}
+	if code > 499 {
+		log.Printf("Responding with 5XX error: %s", msg)
+	}
 	type resError struct {
 		Error string `json:"error"`
 	}
@@ -22,4 +28,12 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	if err != nil {
 		log.Println("encode error:", err)
 	}
+}
+
+func decodeJson(w http.ResponseWriter, r *http.Request, dst interface{}) error {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+
+	return decoder.Decode(dst)
 }

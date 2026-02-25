@@ -1,28 +1,39 @@
 package main
 
 import (
-	"encoding/json"
+	"errors"
 	"log"
-	"net/http"
+	"strings"
 )
 
-func validateChirp(w http.ResponseWriter, r *http.Request) {
-	type parameters struct {
-		Body string `json:"body"`
-	}
-	params := parameters{}
-
-	err := json.NewDecoder(r.Body).Decode(&params)
+func validateChirp(s string) (string, error) {
+	cleaned_body, err := validateProfane(s, []string{
+		"kerfuffle",
+		"sharbert",
+		"fornax",
+	})
 	if err != nil {
-		log.Println("decode error:", err)
+		log.Printf("Error validate chirps: %v", err)
+		return "", err
 	}
-	if len(params.Body) > 140 {
-		respondWithError(w, http.StatusBadRequest, "Chirp is too long")
-		return
-	}
-	type validRes struct {
-		Valid bool `json:"valid"`
-	}
-	respondWithJSON(w, http.StatusOK, validRes{Valid: true})
+	return cleaned_body, nil
+}
 
+func validateProfane(content string, banWords []string) (string, error) {
+	if len(content) > 140 {
+		return "", errors.New("Chirp is too long")
+	}
+	mWord := make(map[string]bool)
+	for _, v := range banWords {
+		mWord[strings.ToLower(v)] = true
+	}
+
+	wContent := strings.Split(content, " ")
+	for i, w := range wContent {
+		_, ok := mWord[strings.ToLower(w)]
+		if ok {
+			wContent[i] = strings.Repeat("*", 4)
+		}
+	}
+	return strings.Join(wContent, " "), nil
 }
