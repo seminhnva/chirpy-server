@@ -2,36 +2,21 @@ package main
 
 import (
 	"errors"
-	"net/http"
+	"log"
 	"strings"
 )
 
-func validateChirp(w http.ResponseWriter, r *http.Request) {
-	type parameters struct {
-		Body string `json:"body"`
-	}
-	params := parameters{}
-
-	if err := decodeJson(w, r, &params); err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error())
-		return
-
-	}
-	cleaned_body, err := validateProfane(params.Body, []string{
+func validateChirp(s string) (string, error) {
+	cleaned_body, err := validateProfane(s, []string{
 		"kerfuffle",
 		"sharbert",
 		"fornax",
 	})
-
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error())
-		return
+		log.Printf("Error validate chirps: %v", err)
+		return "", err
 	}
-	type validRes struct {
-		Cleaned_body string `json:"cleaned_body"`
-	}
-	respondWithJSON(w, http.StatusOK, validRes{Cleaned_body: cleaned_body})
-
+	return cleaned_body, nil
 }
 
 func validateProfane(content string, banWords []string) (string, error) {
