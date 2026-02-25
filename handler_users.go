@@ -48,6 +48,55 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
 		Email:      user.Email,
 	})
 }
+func (cfg *apiConfig) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
+	type parameters struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't find JWT", nil)
+		return
+	}
+	userID, err := auth.ValidateJWT(token, cfg.jwtSecret)
+
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT", nil)
+		return
+	}
+
+	params := parameters{}
+	if err := decodeJson(w, r, &params); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Couln't decode params", err)
+		return
+	}
+	hashedPassword, err := auth.HashPassword(params.Password)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't hash password", err)
+		return
+	}
+
+	rows, err := cfg.database.UpdateUser(r.Context(), database.UpdateUserParams{
+		Email:    params.Email,
+		Password: hashedPassword,
+		ID:       userID,
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "something went wrong", nil)
+		return
+	}
+	if rows == 0 {
+		respondWithError(w, http.StatusUnauthorized, "unauthorized", nil)
+		return
+	}
+	type userUpdate struct {
+		Email string `json:"email"`
+	}
+
+	respondWithJSON(w, http.StatusOK, userUpdate{
+		Email: params.Email,
+	})
+}
 
 func (cfg *apiConfig) handleResetUser(w http.ResponseWriter, r *http.Request) {
 	if cfg.platForm != "dev" {

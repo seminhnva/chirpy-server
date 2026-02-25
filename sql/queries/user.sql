@@ -21,3 +21,8 @@ DELETE FROM users;
 -- name: GetUserInfoByEmail :one
 SELECT * FROM users
 WHERE email = $1;
+
+-- name: UpdateUser :execrows
+UPDATE users 
+SET email = $1, password = $2
+WHERE id = $3;

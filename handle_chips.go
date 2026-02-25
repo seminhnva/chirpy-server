@@ -1,6 +1,8 @@
 package main
 
 import (
+	"database/sql"
+	"errors"
 	"net/http"
 	"time"
 
@@ -66,6 +68,54 @@ func (cfg *apiConfig) handleGetChirpByID(w http.ResponseWriter, r *http.Request)
 		Body:       chirps.Body,
 		Userid:     chirps.UserID,
 	})
+}
+func (cfg *apiConfig) handleDeleteChirpByID(w http.ResponseWriter, r *http.Request) {
+	chirpID, err := uuid.Parse(r.PathValue("chirpID"))
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, err.Error(), err)
+		return
+	}
+
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "unauthorized", nil)
+		return
+	}
+	userID, err := auth.ValidateJWT(token, cfg.jwtSecret)
+
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "unauthorized", nil)
+		return
+	}
+	chirp, err := cfg.database.GetChirpById(r.Context(), chirpID)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			respondWithError(w, http.StatusNotFound, "chirp not found", nil)
+			return
+		}
+		respondWithError(w, http.StatusInternalServerError, "something went wrong", nil)
+		return
+	}
+	if chirp.UserID != userID {
+		respondWithError(w, http.StatusForbidden, "You do not have permission to perform this action", nil)
+		return
+	}
+
+	rows, err := cfg.database.DeleteChirpById(r.Context(), database.DeleteChirpByIdParams{
+		UserID: userID,
+		ID:     chirpID,
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "something went wrong", nil)
+		return
+	}
+	if rows == 0 {
+		respondWithError(w, http.StatusNotFound, "Couldn't find chirp", nil)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (cfg *apiConfig) handleCreateChips(w http.ResponseWriter, r *http.Request) {
