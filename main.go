@@ -13,10 +13,11 @@ import (
 )
 
 func main() {
-	godotenv.Load()
+	_ = godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
 	platForm := os.Getenv("PLATFORM")
 	jwtSecret := os.Getenv("JWT_SECRET")
+	polka_key := os.Getenv("POLKA_KEY")
 	if dbURL == "" {
 		log.Fatal("DB_URL is empty")
 	}
@@ -24,7 +25,10 @@ func main() {
 		log.Fatal("PLATFORM must be set")
 	}
 	if jwtSecret == "" {
-		log.Fatal("PLATFORM must be set")
+		log.Fatal("JWT_SECRET must be set")
+	}
+	if polka_key == "" {
+		log.Fatal("POLKA_KEY must be set")
 	}
 
 	db, err := sql.Open("postgres", dbURL)
@@ -41,6 +45,7 @@ func main() {
 		database:       dbQueries,
 		platForm:       platForm,
 		jwtSecret:      jwtSecret,
+		polka_key:      polka_key,
 	}
 	mux := http.NewServeMux()
 	fs := (http.FileServer(http.Dir(".")))
@@ -64,6 +69,8 @@ func main() {
 	mux.HandleFunc("POST /api/login", apiCfg.handleLogin)
 	mux.HandleFunc("POST /api/refresh", apiCfg.handleRefreshToken)
 	mux.HandleFunc("POST /api/revoke", apiCfg.handleRevokeToken)
+
+	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.handleWebhooks)
 	server := &http.Server{
 		Addr:    ":" + Port,
 		Handler: mux,
