@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/seminhnva/chirpy-server/internal/auth"
 	"github.com/seminhnva/chirpy-server/internal/database"
 )
 
@@ -68,12 +69,23 @@ func (cfg *apiConfig) handleGetChirpByID(w http.ResponseWriter, r *http.Request)
 }
 
 func (cfg *apiConfig) handleCreateChips(w http.ResponseWriter, r *http.Request) {
+
 	type parameters struct {
-		Body   string    `json:"body"`
-		Userid uuid.UUID `json:"user_id"`
+		Body string `json:"body"`
 	}
 	params := parameters{}
 
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "unauthorized", nil)
+		return
+	}
+	userID, err := auth.ValidateJWT(token, cfg.jwtSecret)
+
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "unauthorized", nil)
+		return
+	}
 	if err := decodeJson(w, r, &params); err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error(), err)
 		return
@@ -81,16 +93,16 @@ func (cfg *apiConfig) handleCreateChips(w http.ResponseWriter, r *http.Request) 
 
 	cleanedBody, err := validateChirp(params.Body)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error(), err)
+		respondWithError(w, http.StatusInternalServerError, err.Error(), err)
 		return
 	}
 
 	chirps, err := cfg.database.CreateChirps(r.Context(), database.CreateChirpsParams{
 		Body:   cleanedBody,
-		UserID: params.Userid,
+		UserID: userID,
 	})
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error(), err)
+		respondWithError(w, http.StatusInternalServerError, err.Error(), err)
 		return
 	}
 

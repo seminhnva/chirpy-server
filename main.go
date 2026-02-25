@@ -16,10 +16,14 @@ func main() {
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
 	platForm := os.Getenv("PLATFORM")
+	jwtSecret := os.Getenv("JWT_SECRET")
 	if dbURL == "" {
 		log.Fatal("DB_URL is empty")
 	}
 	if platForm == "" {
+		log.Fatal("PLATFORM must be set")
+	}
+	if jwtSecret == "" {
 		log.Fatal("PLATFORM must be set")
 	}
 
@@ -36,6 +40,7 @@ func main() {
 		fileserverHits: atomic.Int32{},
 		database:       dbQueries,
 		platForm:       platForm,
+		jwtSecret:      jwtSecret,
 	}
 	mux := http.NewServeMux()
 	fs := (http.FileServer(http.Dir(".")))
@@ -54,6 +59,8 @@ func main() {
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handleGetChirpByID)
 
 	mux.HandleFunc("POST /api/login", apiCfg.handleLogin)
+	mux.HandleFunc("POST /api/refresh", apiCfg.handleRefreshToken)
+	mux.HandleFunc("POST /api/revoke", apiCfg.handleRevokeToken)
 	server := &http.Server{
 		Addr:    ":" + Port,
 		Handler: mux,
