@@ -1,116 +1,120 @@
-# Chirpy Server
+# 🐦 Chirpy Server
 
-A small Twitter-like REST API built with Go.
-
-This project was created as a backend practice project to implement authentication, database integration, and webhook handling using the Go standard library.
+A lightweight Twitter-like REST API built with Go — designed as a backend practice project covering authentication, database integration, and webhook handling.
 
 ---
 
-## 📌 About
+## ✨ Features
 
-Chirpy Server is a lightweight backend service that allows users to:
-
-- Register and authenticate
-- Create and manage short posts ("chirps")
-- Use JWT authentication (access + refresh tokens)
-- Handle webhook events securely
-- Interact with a PostgreSQL database using sqlc
-- Run database migrations with goose
-
-This project focuses on backend fundamentals rather than production scalability.
+- 👤 User registration & login with password hashing
+- 🔐 JWT-based authentication (access token + refresh token)
+- 🐦 Create, read, and delete short posts ("chirps")
+- 🔄 Token refresh & revocation
+- 🪝 Webhook endpoint with HMAC signature verification
+- 🗄️ PostgreSQL database via **sqlc** (type-safe query generation)
+- 📦 Database migrations with **goose**
 
 ---
 
-## 🧠 Tech Stack
+## 🛠️ Tech Stack
 
-- Go (net/http)
+| Technology | Purpose |
+|---|---|
+| Go (`net/http`) | HTTP server & routing |
+| PostgreSQL | Database |
+| sqlc | Type-safe SQL query generation |
+| goose | Database migrations |
+| JWT | Access & refresh token authentication |
+| HMAC | Webhook signature verification |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Go 1.21+
 - PostgreSQL
-- sqlc
-- goose (migrations)
-- JWT authentication
-- HMAC signature verification (webhooks)
+- [goose](https://github.com/pressly/goose) — `go install github.com/pressly/goose/v3/cmd/goose@latest`
+- [sqlc](https://sqlc.dev/) — `go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest`
 
----
+### Setup
 
-## 🚀 Features
-
-### Authentication
-- User registration
-- Login with password hashing
-- Access token (short-lived)
-- Refresh token (stored in DB)
-- Token revocation
-
-### Chirps
-- Create chirp
-- Get all chirps (sorted asc/desc)
-- Get chirp by ID
-- Delete chirp (authorized)
-
-### Webhooks
-- Event-driven callback endpoint
-- HMAC signature validation
-- Immediate 200 response
-- Asynchronous processing
-- Constant-time comparison using hmac.Equal
-
----
-
-## 🗄️ Database Setup
-
-Set environment variables:
-
+**1. Clone the repository**
 ```bash
-export DATABASE_URL="postgres://user:pass@localhost:5432/chirpy?sslmode=disable"
-export JWT_SECRET="your_secret"
+git clone https://github.com/seminhnva/chirpy-server.git
+cd chirpy-server
 ```
 
-Run migrations:
+**2. Set environment variables**
+```bash
+export DATABASE_URL="postgres://user:pass@localhost:5432/chirpy?sslmode=disable"
+export JWT_SECRET="your_jwt_secret"
+export POLKA_KEY="your_webhook_secret"
+```
 
+**3. Run database migrations**
 ```bash
 goose postgres "$DATABASE_URL" up
 ```
 
----
-
-## ▶ Running the Server
-
+**4. Start the server**
 ```bash
-go run main.go
+go run .
 ```
 
-Default port: `8080`
-
-Health check:
-
-```
-GET /healthz
-```
-
----
-
-## 🔐 Authentication Flow
-
-1. User logs in → receives access + refresh token  
-2. Access token is used for protected endpoints  
-3. When expired → client calls `/refresh`  
-4. Refresh token can be revoked via `/revoke`
+The server runs on **port 8080** by default.
 
 ---
 
 ## 📡 API Endpoints
 
-```
-POST   /api/users
-POST   /api/login
-POST   /api/refresh
-POST   /api/revoke
+### Health
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/healthz` | Health check |
 
-POST   /api/chirps
-GET    /api/chirps
-GET    /api/chirps/{id}
-DELETE /api/chirps/{id}
-```
+### Users
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/users` | Register a new user |
+| `PUT` | `/api/users` | Update user info (auth required) |
+
+### Authentication
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/login` | Login and receive tokens |
+| `POST` | `/api/refresh` | Get a new access token |
+| `POST` | `/api/revoke` | Revoke refresh token |
+
+### Chirps
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/chirps` | Create a chirp (auth required) |
+| `GET` | `/api/chirps` | Get all chirps (supports `?sort=asc\|desc`) |
+| `GET` | `/api/chirps/{id}` | Get a chirp by ID |
+| `DELETE` | `/api/chirps/{id}` | Delete a chirp (auth required, owner only) |
+
+### Webhooks
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/polka/webhooks` | Receive webhook events (HMAC verified) |
+
+---
+
+## 🔐 Authentication Flow
+
+1. Register via `POST /api/users`
+2. Login via `POST /api/login` → receive **access token** (short-lived) + **refresh token**
+3. Use the access token in the `Authorization: Bearer <token>` header for protected routes
+4. When the access token expires, call `POST /api/refresh` with the refresh token to get a new one
+5. Revoke a session via `POST /api/revoke`
+
+---
+
+## 🪝 Webhook Verification
+
+Webhook requests are verified using **HMAC signatures**. The server compares the `Authorization` header against an expected signature using `hmac.Equal` (constant-time comparison) to prevent timing attacks. Invalid requests are rejected immediately with `401 Unauthorized`.
 
 ---
 
@@ -118,12 +122,15 @@ DELETE /api/chirps/{id}
 
 This project was built to practice:
 
-- Writing REST APIs with net/http
-- Middleware patterns
-- JWT authentication
-- Secure webhook verification
-- Database schema migrations
-- Query generation with sqlc
-- Proper HTTP status handling
+- Writing REST APIs with Go's standard `net/http` package
+- Middleware patterns (logging, auth guards)
+- JWT authentication & token lifecycle management
+- Secure webhook event handling
+- Database schema design & migrations with goose
+- Type-safe SQL with sqlc
 
 ---
+
+## 📄 License
+
+MIT License — free to use and modify.
